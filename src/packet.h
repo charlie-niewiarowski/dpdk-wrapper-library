@@ -33,14 +33,14 @@ public:
     explicit operator bool() const noexcept { return pkt_ != nullptr; }
 
 private:
-    // Only memory_pool constructs a packet — either by allocating a
+    // Only packet_pool constructs a packet — either by allocating a
     // fresh mbuf itself, or by wrapping one handed back by a queue via
-    // memory_pool::get_packet.
+    // packet_pool::get_packet.
     explicit packet(rte_mbuf *pkt) noexcept;
 
     rte_mbuf *pkt_ = nullptr;
 
-    friend class memory_pool;
+    friend class packet_pool;
 };
 
 } // namespace dpdk

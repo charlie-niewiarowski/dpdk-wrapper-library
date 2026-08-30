@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <string>
 #include <rte_eal.h>
+#include <rte_errno.h>
 #include "dpdk_error.h"
 
 namespace dpdk {
@@ -31,6 +32,10 @@ instance::instance(instance &&other) noexcept
 instance &instance::operator=(instance &&other) noexcept {
     if (this != &other) {
         if (owns_eal_) {
+            // Ports (and the packet_pool each one owns) must be torn down
+            // before the EAL is; rte_eal_cleanup() must be the last DPDK
+            // call made.
+            ports_.clear();
             rte_eal_cleanup();
         }
         owns_eal_ = other.owns_eal_;
@@ -42,6 +47,8 @@ instance &instance::operator=(instance &&other) noexcept {
 
 instance::~instance() {
     if (owns_eal_) {
+        // Same ordering requirement as above: ports must go first.
+        ports_.clear();
         rte_eal_cleanup();
     }
 }
@@ -49,6 +56,12 @@ instance::~instance() {
 port &instance::add_port(uint16_t port_id, uint16_t n_rx_queues, uint16_t n_tx_queues,
                           uint16_t elt_size) {
     ports_.emplace_back(port_id, n_rx_queues, n_tx_queues, elt_size);
+    return ports_.back();
+}
+
+port &instance::add_port(uint16_t port_id, uint16_t n_rx_queues, uint16_t n_tx_queues,
+                          std::shared_ptr<packet_pool> pool) {
+    ports_.emplace_back(port_id, n_rx_queues, n_tx_queues, std::move(pool));
     return ports_.back();
 }
 

@@ -6,7 +6,8 @@
 #define INSTANCE_H
 
 #include <cstdint>
-#include <vector>
+#include <deque>
+#include <memory>
 #include "port.h"
 
 namespace dpdk {
@@ -26,11 +27,16 @@ public:
 
     port &add_port(uint16_t port_id, uint16_t n_rx_queues, uint16_t n_tx_queues,
                     uint16_t elt_size = port::default_elt_size);
+    port &add_port(uint16_t port_id, uint16_t n_rx_queues, uint16_t n_tx_queues,
+                    std::shared_ptr<packet_pool> pool);
     port &get_port(uint16_t port_id);
 
 private:
     bool owns_eal_ = true;
-    std::vector<port> ports_;
+    // deque, not vector: add_port returns a reference into this
+    // container, and unlike vector, deque never invalidates references
+    // to existing elements when growing via emplace_back.
+    std::deque<port> ports_;
 };
 
 } // namespace dpdk

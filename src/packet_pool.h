@@ -6,34 +6,46 @@
 #define PACKET_POOL_H
 
 #include <cstdint>
-#include <unordered_map>
-#include "memory_pool.h"
+#include <rte_mempool.h>
+#include "packet.h"
 
 namespace dpdk {
 
-// Owned by instance. Maintains one memory_pool per NUMA socket, all
-// sized uniformly (default 2KB, or overridden at construction). Users
-// who need multiple size classes should manage memory_pool objects
-// directly instead of going through packet_pool.
+// Thin RAII wrapper around a single rte_mempool of packet mbufs.
+// Exposed directly for advanced users who want manual control over
+// pool count, element size, or NUMA placement.
+//
+// Must be destroyed before the instance (EAL) it depends on --
+// rte_eal_cleanup() releases the hugepage memory this pool is backed
+// by, and must be the last DPDK call made. instance guarantees this
+// ordering for a pool owned by a port; a standalone packet_pool (as
+// used here) is the caller's own scoping responsibility.
 class packet_pool {
 public:
-    static constexpr uint16_t default_elt_size = 2048;
+    packet_pool(const char *name, unsigned n_mbufs, uint16_t elt_size,
+                unsigned socket_id, unsigned cache_size = 256);
 
-    explicit packet_pool(uint16_t elt_size = default_elt_size);
-
-    packet_pool(packet_pool &&) noexcept = default;
-    packet_pool &operator=(packet_pool &&) noexcept = default;
+    packet_pool(packet_pool &&other) noexcept;
+    packet_pool &operator=(packet_pool &&other) noexcept;
     packet_pool(const packet_pool &) = delete;
     packet_pool &operator=(const packet_pool &) = delete;
+    ~packet_pool();
 
-    // Allocates from the pool matching the calling thread's NUMA socket.
-    packet allocate() const;
-
-    // Escape hatch to reach a specific socket's pool directly.
-    memory_pool &pool_for(unsigned socket_id);
+    packet get() const;
+    rte_mempool *native_handle() const noexcept { return pool_; }
+    unsigned socket_id() const noexcept;
 
 private:
-    std::unordered_map<unsigned, memory_pool> pools_;
+    rte_mempool *pool_ = nullptr;
+
+    // Wraps an already-obtained mbuf (e.g. one handed back by
+    // rte_eth_rx_burst) as a packet, without allocating. packet's
+    // constructor is private to keep packet_pool the single point of
+    // packet creation; the queue types reach it through here instead.
+    static packet get_packet(rte_mbuf *mbuf) noexcept;
+
+    friend class rx_queue;
+    friend class tx_queue;
 };
 
 } // namespace dpdk

@@ -6,7 +6,7 @@
 
 #include <vector>
 #include <rte_ethdev.h>
-#include "memory_pool.h"
+#include "packet_pool.h"
 
 namespace dpdk {
 
@@ -46,7 +46,7 @@ packet_burst rx_queue::receive_burst(std::size_t max_count) const {
     burst.count_ = rte_eth_rx_burst(handle_->port_id, handle_->queue_id,
                                      bufs.data(), static_cast<uint16_t>(max_count));
     for (std::size_t i = 0; i < burst.count_; ++i) {
-        burst.packets_[i] = memory_pool::get_packet(bufs[i]);
+        burst.packets_[i] = packet_pool::get_packet(bufs[i]);
     }
     return burst;
 }
