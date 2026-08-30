@@ -1,0 +1,46 @@
+//
+// Created by cniew on 8/29/26.
+//
+
+#include "packet.h"
+
+namespace dpdk {
+
+packet::packet(rte_mbuf *pkt) noexcept : pkt_(pkt) {}
+
+packet::packet(packet &&other) noexcept : pkt_(other.pkt_) {
+    other.pkt_ = nullptr;
+}
+
+packet &packet::operator=(packet &&other) noexcept {
+    if (this != &other) {
+        if (pkt_ != nullptr) {
+            rte_pktmbuf_free(pkt_);
+        }
+        pkt_ = other.pkt_;
+        other.pkt_ = nullptr;
+    }
+    return *this;
+}
+
+packet::~packet() {
+    if (pkt_ != nullptr) {
+        rte_pktmbuf_free(pkt_);
+    }
+}
+
+rte_mbuf *packet::release() noexcept {
+    rte_mbuf *pkt = pkt_;
+    pkt_ = nullptr;
+    return pkt;
+}
+
+uint8_t *packet::data() const noexcept {
+    return rte_pktmbuf_mtod(pkt_, uint8_t *);
+}
+
+uint16_t packet::length() const noexcept {
+    return pkt_->pkt_len;
+}
+
+} // namespace dpdk

@@ -1,0 +1,3 @@
+/home/cniew/dev/CLionProjects/kernel-bypass-networking-library/build/CMakeFiles/kernel_bypass_networking_library.dir
+/home/cniew/dev/CLionProjects/kernel-bypass-networking-library/build/CMakeFiles/edit_cache.dir
+/home/cniew/dev/CLionProjects/kernel-bypass-networking-library/build/CMakeFiles/rebuild_cache.dir
