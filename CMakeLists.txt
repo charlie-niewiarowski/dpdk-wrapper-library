@@ -24,21 +24,29 @@ endfunction()
 
 add_library(dpdk_lib STATIC
         src/packet.cpp
-        src/packet.h
+        include/packet.h
         src/rx_queue.cpp
-        src/rx_queue.h
+        include/rx_queue.h
         src/tx_queue.cpp
-        src/tx_queue.h
+        include/tx_queue.h
         src/packet_pool.cpp
-        src/packet_pool.h
+        include/packet_pool.h
         src/packet_burst.cpp
-        src/packet_burst.h
-        src/dpdk_error.h
+        include/packet_burst.h
+        include/dpdk_error.h
         src/port.cpp
-        src/port.h
+        include/port.h
         src/runtime.cpp
-        src/runtime.h)
-target_include_directories(dpdk_lib PUBLIC src)
+        include/runtime.h
+        src/ethernet_header.cpp
+        include/ethernet_header.h
+        src/ipv4_header.cpp
+        include/ipv4_header.h
+        src/udp_header.cpp
+        include/udp_header.h
+        src/tcp_header.cpp
+        include/tcp_header.h)
+target_include_directories(dpdk_lib PUBLIC include)
 target_link_libraries(dpdk_lib PUBLIC PkgConfig::DPDK)
 enable_ipo_if_supported(dpdk_lib)
 

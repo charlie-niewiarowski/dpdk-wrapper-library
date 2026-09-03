@@ -47,6 +47,13 @@ public:
     // bytes.
     uint8_t *append(Payload payload) noexcept;
 
+    // Records where the L2/L3 header ends within this packet. Used by
+    // TX checksum/segmentation offload and by the header-building
+    // suites (ethernet_header.h, ipv4_header.h) so that bookkeeping is
+    // in place without exposing the raw mbuf.
+    void set_l2_len(uint16_t len) noexcept;
+    void set_l3_len(uint16_t len) noexcept;
+
     explicit operator bool() const noexcept { return pkt_ != nullptr; }
 
 private:

@@ -58,4 +58,8 @@ uint8_t *packet::append(Payload payload) noexcept {
     return dst;
 }
 
+void packet::set_l2_len(uint16_t len) noexcept { pkt_->l2_len = len; }
+
+void packet::set_l3_len(uint16_t len) noexcept { pkt_->l3_len = len; }
+
 } // namespace dpdk
