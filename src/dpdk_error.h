@@ -11,7 +11,7 @@
 namespace dpdk {
 
 // Thrown when a DPDK C API call fails during setup (EAL init, port/queue
-// configuration, pool creation, ...). A single type keeps failures from
+// configuration, pool creation, etc.). A single type keeps failures from
 // this library's setup path uniformly catchable.
 class dpdk_error : public std::runtime_error {
 public:

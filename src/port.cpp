@@ -12,7 +12,6 @@ namespace dpdk {
 
 namespace {
 
-constexpr unsigned kDefaultNumMbufs = 8192;
 constexpr uint16_t kDefaultRingSize = 1024;
 
 void check_valid_port(uint16_t port_id) {
@@ -21,18 +20,7 @@ void check_valid_port(uint16_t port_id) {
     }
 }
 
-std::shared_ptr<packet_pool> make_default_pool(uint16_t port_id, uint16_t elt_size) {
-    check_valid_port(port_id);
-    const std::string name = "PORT_" + std::to_string(port_id) + "_POOL";
-    const int socket_id = rte_eth_dev_socket_id(port_id);
-    return std::make_shared<packet_pool>(name.c_str(), kDefaultNumMbufs, elt_size,
-                                          static_cast<unsigned>(socket_id));
-}
-
 } // namespace
-
-port::port(uint16_t port_id, uint16_t n_rx_queues, uint16_t n_tx_queues, uint16_t elt_size)
-    : port(port_id, n_rx_queues, n_tx_queues, make_default_pool(port_id, elt_size)) {}
 
 port::port(uint16_t port_id, uint16_t n_rx_queues, uint16_t n_tx_queues,
            std::shared_ptr<packet_pool> pool)
@@ -86,6 +74,8 @@ port::port(port &&other) noexcept
       pool_(std::move(other.pool_)),
       rx_queues_(std::move(other.rx_queues_)),
       tx_queues_(std::move(other.tx_queues_)),
+      next_rx_claim_(other.next_rx_claim_),
+      next_tx_claim_(other.next_tx_claim_),
       owns_device_(other.owns_device_) {
     other.owns_device_ = false;
 }
@@ -100,6 +90,8 @@ port &port::operator=(port &&other) noexcept {
         pool_ = std::move(other.pool_);
         rx_queues_ = std::move(other.rx_queues_);
         tx_queues_ = std::move(other.tx_queues_);
+        next_rx_claim_ = other.next_rx_claim_;
+        next_tx_claim_ = other.next_tx_claim_;
         owns_device_ = other.owns_device_;
         other.owns_device_ = false;
     }
@@ -113,12 +105,18 @@ port::~port() {
     }
 }
 
-std::shared_ptr<rx_queue> port::get_rx_queue(uint16_t queue_id) const {
-    return rx_queues_.at(queue_id);
+std::shared_ptr<rx_queue> port::claim_rx_queue() {
+    if (next_rx_claim_ >= rx_queues_.size()) {
+        return nullptr;
+    }
+    return rx_queues_[next_rx_claim_++];
 }
 
-std::shared_ptr<tx_queue> port::get_tx_queue(uint16_t queue_id) const {
-    return tx_queues_.at(queue_id);
+std::shared_ptr<tx_queue> port::claim_tx_queue() {
+    if (next_tx_claim_ >= tx_queues_.size()) {
+        return nullptr;
+    }
+    return tx_queues_[next_tx_claim_++];
 }
 
 packet_burst port::receive_burst(uint16_t queue_id, std::size_t max_count) const {

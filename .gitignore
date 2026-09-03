@@ -1,4 +1,6 @@
 .venv
 .idea
 build
+build-bench
+build-bench2
 __pycache__

@@ -17,11 +17,11 @@ namespace dpdk {
 // without going back through port.
 class tx_queue {
 public:
-    tx_queue(tx_queue &&other) noexcept;
-    tx_queue &operator=(tx_queue &&other) noexcept;
+    tx_queue(tx_queue &&) noexcept = default;
+    tx_queue &operator=(tx_queue &&) noexcept = default;
     tx_queue(const tx_queue &) = delete;
     tx_queue &operator=(const tx_queue &) = delete;
-    ~tx_queue();
+    ~tx_queue() = default;
 
     // Attempts to send every packet in pkts. Packets actually accepted
     // by the NIC are released (ownership passes to the driver); any
@@ -29,19 +29,20 @@ public:
     // caller to retry or drop. Returns the number actually sent.
     uint16_t send_burst(std::span<packet> pkts) const;
 
-    uint16_t port_id() const noexcept;
-    uint16_t queue_id() const noexcept;
+    uint16_t port_id() const noexcept { return port_id_; }
+    uint16_t queue_id() const noexcept { return queue_id_; }
 
 private:
     // Only port constructs a queue — it's the sole owner of the
     // (port_id, queue_id) pairs actually configured on the device.
-    tx_queue(uint16_t port_id, uint16_t queue_id);
+    tx_queue(uint16_t port_id, uint16_t queue_id) noexcept
+        : port_id_(port_id), queue_id_(queue_id) {}
 
-    struct handle {
-        uint16_t port_id;
-        uint16_t queue_id;
-    };
-    handle *handle_;
+    // port_id/queue_id are 4 bytes total and identify the queue, not
+    // own any resource -- no reason to put them behind a heap-allocated
+    // handle the way packet owns its rte_mbuf*.
+    uint16_t port_id_;
+    uint16_t queue_id_;
 
     friend class port;
 };

@@ -1,4 +1,4 @@
-// Easy-use example: one instance (the DPDK runtime), one port with a
+// Easy-use example: one runtime (the DPDK runtime), one port with a
 // single RX/TX queue, everything driven through port's convenience
 // surface. No manual queue handles, no manual pool management, no
 // manually declared receive buffer, no manual freeing of packets — this
@@ -7,12 +7,12 @@
 #include <cstdio>
 #include <exception>
 
-#include "instance.h"
+#include "runtime.h"
 
 int main(int argc, char **argv) {
     try {
-        // instance owns EAL bring-up/teardown itself now.
-        dpdk::instance runtime(argc, argv);
+        // runtime owns EAL bring-up/teardown itself now.
+        dpdk::runtime runtime(argc, argv);
 
         // One port: its own 2KB pool (default), sized for its own NUMA
         // socket, with a single RX queue and a single TX queue.
