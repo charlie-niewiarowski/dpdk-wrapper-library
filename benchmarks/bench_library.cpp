@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstring>
 #include <array>
+#include <string>
 #include <vector>
 
 #include <rte_cycles.h>
@@ -76,7 +77,10 @@ std::vector<double> run_batched(uint64_t hz, RoundTripFn &&round_trip) {
 
 int main(int argc, char **argv) {
     try {
-        dpdk::runtime runtime(argc, argv);
+        dpdk::runtime runtime(dpdk::runtime_params{
+            .program_name = argv[0],
+            .extra_args = std::vector<std::string>(argv + 1, argv + argc),
+        });
         dpdk::port &eth0 =
             runtime.add_port(/*port_id=*/0, /*n_rx_queues=*/1, /*n_tx_queues=*/1);
 

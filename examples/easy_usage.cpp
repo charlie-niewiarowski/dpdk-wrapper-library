@@ -6,13 +6,22 @@
 
 #include <cstdio>
 #include <exception>
+#include <string>
+#include <vector>
 
 #include "runtime.h"
 
 int main(int argc, char **argv) {
     try {
-        // runtime owns EAL bring-up/teardown itself now.
-        dpdk::runtime runtime(argc, argv);
+        // runtime owns EAL bring-up/teardown itself now. Forward the
+        // process's own argv straight through as EAL args (typical for a
+        // standalone binary where the whole command line is DPDK's) via
+        // extra_args -- program_name still comes from argv[0] separately
+        // since EAL/getopt never treats it as an option.
+        dpdk::runtime runtime(dpdk::runtime_params{
+            .program_name = argv[0],
+            .extra_args = std::vector<std::string>(argv + 1, argv + argc),
+        });
 
         // One port: its own 2KB pool (default), sized for its own NUMA
         // socket, with a single RX queue and a single TX queue.

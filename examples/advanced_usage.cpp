@@ -10,6 +10,7 @@
 #include <atomic>
 #include <chrono>
 #include <exception>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -41,7 +42,10 @@ void worker(std::shared_ptr<dpdk::rx_queue> rxq, std::shared_ptr<dpdk::tx_queue>
 
 int main(int argc, char **argv) {
     try {
-        dpdk::runtime runtime(argc, argv);
+        dpdk::runtime runtime(dpdk::runtime_params{
+            .program_name = argv[0],
+            .extra_args = std::vector<std::string>(argv + 1, argv + argc),
+        });
 
         constexpr uint16_t kNumQueues = 2;
         dpdk::port &eth0 = runtime.add_port(/*port_id=*/0, kNumQueues, kNumQueues);

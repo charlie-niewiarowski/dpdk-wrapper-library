@@ -8,26 +8,108 @@
 #include <cstdint>
 #include <deque>
 #include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 #include "packet_pool.h"
 #include "port.h"
 
 namespace dpdk {
 
+enum class eal_proc_type {
+    primary,
+    secondary,
+    auto_detect,
+};
+
+enum class eal_iova_mode {
+    pa,
+    va,
+};
+
+// This is an aggregate on purpose so it can be built with designated
+// initializers, naming only the params being set, e.g.:
+//
+//   dpdk::runtime_params params{
+//       .core_list = "0-3",
+//       .n_memory_channels = 4,
+//       .vdevs = {"net_ring0"},
+//   };
+struct runtime_params {
+    // never parsed as an option, but required to be present
+    std::string program_name = "dpdk_app";
+
+    // -l <core_list>, e.g. "0-3" or "0,2,4-7"
+    std::optional<std::string> core_list;
+
+    // --main-lcore <id>
+    std::optional<unsigned> main_lcore;
+
+    // -n <n_channels>
+    std::optional<unsigned> n_memory_channels;
+
+    // -m <n_mb> (legacy total-memory sizing; prefer socket_mem when pinning
+    // memory to specific NUMA sockets)
+    std::optional<unsigned> legacy_mem_mb;
+
+    // --socket-mem <per-socket-MB-list>, e.g. "1024,1024"
+    std::optional<std::string> socket_mem;
+
+    // --socket-limit <per-socket-MB-list>
+    std::optional<std::string> socket_limit;
+
+    // --huge-dir <path>
+    std::optional<std::string> huge_dir;
+
+    // --file-prefix <prefix> (lets independent DPDK processes on the same
+    // host use separate hugepage/shared-config namespaces)
+    std::optional<std::string> file_prefix;
+
+    // --proc-type primary|secondary|auto
+    std::optional<eal_proc_type> proc_type;
+
+    // --iova-mode pa|va
+    std::optional<eal_iova_mode> iova_mode;
+
+    // --log-level <level> or <component>:<level>
+    std::optional<std::string> log_level;
+
+    // --no-huge (run on regular pages instead of hugepages -- paired with
+    // legacy_mem_mb in most no-hugepage/CI setups)
+    std::optional<bool> no_huge;
+
+    // --no-pci (skip PCI bus scanning entirely; typical for vdev-only runs)
+    std::optional<bool> no_pci;
+
+    // --in-memory (no shared-config/hugepage files on disk at all; implies
+    // --no-shconf and fresh hugepages every run)
+    std::optional<bool> in_memory;
+
+    // -a <pci_id>, repeatable: PCI allowlist
+    std::vector<std::string> pci_allow;
+
+    // -b <pci_id>, repeatable: PCI blocklist
+    std::vector<std::string> pci_block;
+
+    // --vdev <driver_args>, repeatable, e.g. "net_ring0" or
+    // "net_pcap0,rx_pcap=in.pcap,tx_pcap=out.pcap"
+    std::vector<std::string> vdevs;
+
+    // Escape hatch for any EAL flag not modeled above (appended verbatim,
+    // in order, after everything else).
+    std::vector<std::string> extra_args;
+};
+
 // Represents the DPDK runtime itself: brings up the EAL (hugepages,
 // lcores, PCI/vdev probing) on construction and tears it down on
 // destruction. Owns every port (and, transitively, every port's
-// packet_pool) configured through it.
-//
-// Exactly one runtime may exist per process at a time -- constructing a
-// second one while one is alive throws, since rte_eal_init/cleanup are
-// inherently process-global. That's enforced internally; it is not a
-// singleton accessor, and there is no way to reach a runtime except by
-// constructing one yourself or being handed a reference to one.
+// packet_pool)
+// Exactly one runtime may exist per process at a time
 class runtime {
 public:
     static constexpr uint16_t default_elt_size = 2048;
 
-    runtime(int argc, char **argv);
+    explicit runtime(runtime_params params);
 
     runtime(runtime &&) noexcept;
     runtime &operator=(runtime &&) noexcept;

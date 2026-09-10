@@ -6,8 +6,10 @@
 
 #include <algorithm>
 #include <atomic>
+#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 #include <rte_eal.h>
 #include <rte_errno.h>
 #include <rte_ethdev.h>
@@ -26,13 +28,132 @@ std::atomic<bool> g_runtime_exists{false};
 
 } // namespace
 
-runtime::runtime(int argc, char **argv) {
+namespace {
+
+// Appends flag, then value, only when value is engaged -- the single point
+// through which an unset optional field means "say nothing to EAL" rather
+// than "say something with a default value." Not used for optional<bool>
+// fields: those are presence-only flags with no value to render, handled
+// separately by append_flag below.
+template <typename T>
+void append_opt(std::vector<std::string> &args, const char *flag, const std::optional<T> &value) {
+    if (!value) {
+        return;
+    }
+    args.emplace_back(flag);
+    args.push_back(std::to_string(*value));
+}
+
+void append_opt(std::vector<std::string> &args, const char *flag,
+                 const std::optional<std::string> &value) {
+    if (!value) {
+        return;
+    }
+    args.emplace_back(flag);
+    args.push_back(*value);
+}
+
+// Presence-only flag: emitted iff the optional is engaged *and* true.
+// Explicitly set to false stays silent, same as unset -- there's no EAL
+// syntax for "explicitly disable", so both mean "don't pass this flag."
+void append_flag(std::vector<std::string> &args, const char *flag,
+                  const std::optional<bool> &value) {
+    if (value && *value) {
+        args.emplace_back(flag);
+    }
+}
+
+void append_repeated(std::vector<std::string> &args, const char *flag,
+                      const std::vector<std::string> &values) {
+    for (const std::string &v : values) {
+        args.emplace_back(flag);
+        args.push_back(v);
+    }
+}
+
+const char *to_string(eal_proc_type type) {
+    switch (type) {
+        case eal_proc_type::primary:
+            return "primary";
+        case eal_proc_type::secondary:
+            return "secondary";
+        case eal_proc_type::auto_detect:
+            return "auto";
+    }
+    return "auto";
+}
+
+const char *to_string(eal_iova_mode mode) {
+    switch (mode) {
+        case eal_iova_mode::pa:
+            return "pa";
+        case eal_iova_mode::va:
+            return "va";
+    }
+    return "pa";
+}
+
+// Flattens runtime_params into the argv rte_eal_init() expects. Only
+// fields the caller actually set (optionals that are engaged, vectors that
+// aren't empty) contribute anything -- an unset field is invisible here,
+// leaving EAL to fall back to its own default for it.
+std::vector<std::string> build_eal_args(const runtime_params &params) {
+    std::vector<std::string> args;
+    args.push_back(params.program_name);
+
+    append_opt(args, "-l", params.core_list);
+    append_opt(args, "--main-lcore", params.main_lcore);
+    append_opt(args, "-n", params.n_memory_channels);
+    append_opt(args, "-m", params.legacy_mem_mb);
+    append_opt(args, "--socket-mem", params.socket_mem);
+    append_opt(args, "--socket-limit", params.socket_limit);
+    append_opt(args, "--huge-dir", params.huge_dir);
+    append_opt(args, "--file-prefix", params.file_prefix);
+    if (params.proc_type) {
+        args.emplace_back("--proc-type");
+        args.emplace_back(to_string(*params.proc_type));
+    }
+    if (params.iova_mode) {
+        args.emplace_back("--iova-mode");
+        args.emplace_back(to_string(*params.iova_mode));
+    }
+    append_opt(args, "--log-level", params.log_level);
+    append_flag(args, "--no-huge", params.no_huge);
+    append_flag(args, "--no-pci", params.no_pci);
+    append_flag(args, "--in-memory", params.in_memory);
+
+    append_repeated(args, "-a", params.pci_allow);
+    append_repeated(args, "-b", params.pci_block);
+    append_repeated(args, "--vdev", params.vdevs);
+
+    for (const std::string &extra : params.extra_args) {
+        args.push_back(extra);
+    }
+
+    return args;
+}
+
+} // namespace
+
+runtime::runtime(runtime_params params) {
     bool expected = false;
     if (!g_runtime_exists.compare_exchange_strong(expected, true)) {
         throw dpdk_error("Only one dpdk::runtime may exist per process");
     }
 
-    const int ret = rte_eal_init(argc, argv);
+    // rte_eal_init() takes char *argv[], not char *const argv[] -- it (and
+    // getopt underneath it) may permute entries during parsing, so each
+    // element needs its own writable, stable-address storage. eal_args
+    // owns that storage for the lifetime of the call; argv just points
+    // into it.
+    const std::vector<std::string> eal_args = build_eal_args(params);
+    std::vector<char *> argv;
+    argv.reserve(eal_args.size());
+    for (const std::string &arg : eal_args) {
+        argv.push_back(const_cast<char *>(arg.c_str()));
+    }
+
+    const int ret = rte_eal_init(static_cast<int>(argv.size()), argv.data());
     if (ret < 0) {
         g_runtime_exists.store(false);
         throw dpdk_error(std::string("rte_eal_init failed: ") + rte_strerror(rte_errno));
