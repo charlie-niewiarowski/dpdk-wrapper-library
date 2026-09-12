@@ -50,9 +50,6 @@ target_include_directories(dpdk_lib PUBLIC include)
 target_link_libraries(dpdk_lib PUBLIC PkgConfig::DPDK)
 enable_ipo_if_supported(dpdk_lib)
 
-add_executable(kernel_bypass_networking_library main.cpp)
-target_link_libraries(kernel_bypass_networking_library PRIVATE PkgConfig::DPDK)
-
 add_executable(easy_usage examples/easy_usage.cpp)
 target_link_libraries(easy_usage PRIVATE dpdk_lib)
 enable_ipo_if_supported(easy_usage)
