@@ -291,6 +291,12 @@ public:
     // message fits before committing to send it.
     std::size_t send_space(conn_id conn) const noexcept;
 
+    // Whether send() can ever succeed on conn again: false once it's
+    // unknown/stale, reset or closed, or close()d. Distinguishes "window
+    // full, retry later" (sendable, send_space() == 0) from "give up and
+    // drop the remainder" -- send() alone returns 0 for both.
+    bool sendable(conn_id conn) const noexcept;
+
     // Must be called exactly once for every accepted connection, even
     // after it was reset or closed -- like close() on an fd, it's what
     // lets the slot be reused. On a connection still open in our

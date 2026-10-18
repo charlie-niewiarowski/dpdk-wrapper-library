@@ -872,23 +872,26 @@ tcp_connection *tcp_sender::lookup(conn_id conn) const noexcept {
     return &c;
 }
 
+bool tcp_sender::sendable(conn_id conn) const noexcept {
+    const tcp_connection *c = lookup(conn);
+    return c != nullptr && (c->out_flags.load(std::memory_order_relaxed) & out_fin_sent) == 0 &&
+           c->terminated.load(std::memory_order_acquire) == 0;
+}
+
 std::size_t tcp_sender::send_space(conn_id conn) const noexcept {
-    tcp_connection *c = lookup(conn);
-    if (c == nullptr || (c->out_flags.load(std::memory_order_relaxed) & out_fin_sent) != 0 ||
-        c->terminated.load(std::memory_order_acquire) != 0) {
+    if (!sendable(conn)) {
         return 0;
     }
+    const tcp_connection *c = lookup(conn);
     return window_space(c->send_window.load(std::memory_order_acquire),
                         c->snd_nxt.load(std::memory_order_relaxed));
 }
 
 std::size_t tcp_sender::send(conn_id conn, std::span<const std::byte> bytes) noexcept {
-    tcp_connection *c = lookup(conn);
-    if (c == nullptr || bytes.empty() ||
-        (c->out_flags.load(std::memory_order_relaxed) & out_fin_sent) != 0 ||
-        c->terminated.load(std::memory_order_acquire) != 0) {
+    if (bytes.empty() || !sendable(conn)) {
         return 0;
     }
+    tcp_connection *c = lookup(conn);
 
     // We're snd_nxt's only writer, so a relaxed read of our own value is exact.
     const uint32_t base = c->snd_nxt.load(std::memory_order_relaxed);

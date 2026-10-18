@@ -408,6 +408,7 @@ TEST_F(tcp, reset_tears_down_and_send_stops) {
 
     EXPECT_EQ(tx->send(conn, bytes("nope")), 0u);
     EXPECT_EQ(tx->send_space(conn), 0u);
+    EXPECT_FALSE(tx->sendable(conn));
     tx->close(conn);
     EXPECT_TRUE(sent_on(data_q).empty()) << "no FIN into a reset connection";
 }
@@ -530,6 +531,7 @@ TEST_F(tcp, sending_is_limited_by_peer_window) {
     peer_sends(pseq, iss + 1 + 3000, ACK, {}, 0);
     EXPECT_EQ(tx->send_space(conn), 0u);
     EXPECT_EQ(tx->send(conn, bytes("x")), 0u);
+    EXPECT_TRUE(tx->sendable(conn)) << "window full is not dead";
 }
 
 TEST_F(tcp, out_of_order_is_dropped_and_rcv_nxt_reacked) {

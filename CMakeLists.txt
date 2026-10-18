@@ -50,7 +50,9 @@ add_library(dpdk_lib STATIC
         include/arp.h
         src/tcp_connection.h
         src/tcp_stack.cpp
-        include/tcp_stack.h)
+        include/tcp_stack.h
+        src/tap_interface.cpp
+        include/tap_interface.h)
 target_include_directories(dpdk_lib PUBLIC include)
 target_link_libraries(dpdk_lib PUBLIC PkgConfig::DPDK)
 enable_ipo_if_supported(dpdk_lib)
@@ -62,6 +64,10 @@ enable_ipo_if_supported(easy_usage)
 add_executable(advanced_usage examples/advanced_usage.cpp)
 target_link_libraries(advanced_usage PRIVATE dpdk_lib)
 enable_ipo_if_supported(advanced_usage)
+
+add_executable(tcp_echo examples/tcp_echo.cpp examples/tcp_echo_server.h)
+target_link_libraries(tcp_echo PRIVATE dpdk_lib)
+enable_ipo_if_supported(tcp_echo)
 
 add_executable(bench_bare_dpdk benchmarks/bench_bare_dpdk.cpp)
 target_link_libraries(bench_bare_dpdk PRIVATE PkgConfig::DPDK)
