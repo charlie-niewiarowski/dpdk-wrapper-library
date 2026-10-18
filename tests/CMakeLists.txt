@@ -8,7 +8,8 @@ FetchContent_MakeAvailable(googletest)
 add_executable(dpdk_lib_tests
         test_main.cpp
         test_env.h
-        port_helpers_test.cpp)
+        port_helpers_test.cpp
+        arp_test.cpp)
 target_link_libraries(dpdk_lib_tests PRIVATE dpdk_lib GTest::gtest)
 
 # One test entry for the whole binary rather than gtest_discover_tests:

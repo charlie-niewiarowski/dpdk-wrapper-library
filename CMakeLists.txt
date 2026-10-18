@@ -45,7 +45,9 @@ add_library(dpdk_lib STATIC
         src/udp_header.cpp
         include/udp_header.h
         src/tcp_header.cpp
-        include/tcp_header.h)
+        include/tcp_header.h
+        src/arp.cpp
+        include/arp.h)
 target_include_directories(dpdk_lib PUBLIC include)
 target_link_libraries(dpdk_lib PUBLIC PkgConfig::DPDK)
 enable_ipo_if_supported(dpdk_lib)
