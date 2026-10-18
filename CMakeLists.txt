@@ -47,7 +47,10 @@ add_library(dpdk_lib STATIC
         src/tcp_header.cpp
         include/tcp_header.h
         src/arp.cpp
-        include/arp.h)
+        include/arp.h
+        src/tcp_connection.h
+        src/tcp_stack.cpp
+        include/tcp_stack.h)
 target_include_directories(dpdk_lib PUBLIC include)
 target_link_libraries(dpdk_lib PUBLIC PkgConfig::DPDK)
 enable_ipo_if_supported(dpdk_lib)

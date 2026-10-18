@@ -32,6 +32,12 @@ public:
     uint8_t *data() const noexcept;
     uint16_t length() const noexcept;
 
+    // True when all length() bytes are in one buffer, i.e. directly
+    // addressable from data(). A received jumbo frame (or one a driver
+    // scattered across several mbufs) isn't, and parsing it through
+    // data() alone would read past the first segment.
+    bool is_contiguous() const noexcept;
+
     // Grows the packet by len bytes and returns a pointer to the newly
     // added region for the caller to fill in -- the same role as
     // rte_pktmbuf_append, for building an outgoing packet's payload.

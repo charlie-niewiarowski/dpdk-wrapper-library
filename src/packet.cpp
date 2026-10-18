@@ -45,6 +45,10 @@ uint16_t packet::length() const noexcept {
     return pkt_->pkt_len;
 }
 
+bool packet::is_contiguous() const noexcept {
+    return pkt_->nb_segs == 1;
+}
+
 uint8_t *packet::append(uint16_t len) noexcept {
     return reinterpret_cast<uint8_t *>(rte_pktmbuf_append(pkt_, len));
 }
