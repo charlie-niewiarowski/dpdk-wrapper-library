@@ -65,3 +65,11 @@ enable_ipo_if_supported(bench_bare_dpdk)
 add_executable(bench_library benchmarks/bench_library.cpp)
 target_link_libraries(bench_library PRIVATE dpdk_lib)
 enable_ipo_if_supported(bench_library)
+
+# Unprivileged unit tests: software-only EAL over net_ring vdevs, so they
+# run as a normal user with no hugepages or NIC. See tests/test_env.h.
+option(DPDK_LIB_BUILD_TESTS "Build the GoogleTest suite" ON)
+if(DPDK_LIB_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

@@ -8,8 +8,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <vector>
+#include <rte_ether.h>
 #include "packet.h"
 #include "packet_burst.h"
 #include "packet_pool.h"
@@ -53,11 +55,36 @@ public:
     std::shared_ptr<rx_queue> claim_rx_queue();
     std::shared_ptr<tx_queue> claim_tx_queue();
 
+    // Claims one specific queue by id, for when the id itself matters --
+    // e.g. a gateway whose inbound thread must own tx queue 0 for control
+    // segments while its outbound thread owns tx queue 1 for data. Throws
+    // dpdk_error if queue_id isn't a configured queue (a setup bug, not a
+    // runtime condition). Returns an empty shared_ptr if that queue was
+    // already claimed by either form; the no-arg form skips ids claimed
+    // here, so mixing the two never hands the same queue out twice. Same
+    // single-setup-thread rule as above.
+    std::shared_ptr<rx_queue> claim_rx_queue(uint16_t queue_id);
+    std::shared_ptr<tx_queue> claim_tx_queue(uint16_t queue_id);
+
     packet_burst receive_burst(uint16_t queue_id,
                                 std::size_t max_count = packet_burst::max_size) const;
     uint16_t send_burst(uint16_t queue_id, std::span<packet> pkts) const;
 
     uint16_t port_id() const noexcept;
+
+    // The device's own MAC (rte_eth_macaddr_get). What ARP replies
+    // advertise and what outgoing frames use as their source address.
+    // Throws dpdk_error if the driver can't report one.
+    rte_ether_addr mac_address() const;
+
+    // The IPv4 address (host byte order) this port answers to: ARP
+    // replies are only sent for it, and tcp_stack uses it as the local
+    // address. Nothing in DPDK knows about L3 addressing, so this is pure
+    // bookkeeping on the port -- unset until the caller sets it. Set it
+    // during setup, before anything that reads it is constructed or any
+    // worker thread starts.
+    void set_ipv4_address(uint32_t addr) noexcept { ipv4_addr_ = addr; }
+    std::optional<uint32_t> ipv4_address() const noexcept { return ipv4_addr_; }
 
 private:
     port(uint16_t port_id, uint16_t n_rx_queues, uint16_t n_tx_queues,
@@ -73,6 +100,11 @@ private:
     std::vector<std::shared_ptr<tx_queue>> tx_queues_;
     std::size_t next_rx_claim_ = 0;
     std::size_t next_tx_claim_ = 0;
+    // One flag per queue, set by either claim form. vector<char> rather
+    // than vector<bool> purely to keep element access a plain byte load.
+    std::vector<char> rx_claimed_;
+    std::vector<char> tx_claimed_;
+    std::optional<uint32_t> ipv4_addr_;
     // False for a moved-from port, so its destructor doesn't stop/close a
     // device now owned by whatever it was moved into.
     bool owns_device_ = true;
