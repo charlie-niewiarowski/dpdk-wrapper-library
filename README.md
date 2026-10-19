@@ -1,8 +1,8 @@
 # dpdk-wrapper-library
 
 A small C++20 library for writing [DPDK](https://www.dpdk.org/) applications without the C
-boilerplate. It wraps the parts of DPDK a packet-processing app touches — EAL startup, ports,
-queues, mbuf pools and mbufs — in RAII types. On top of that it adds header builders for
+boilerplate. It wraps the parts of DPDK a packet-processing app touches like EAL startup, ports,
+queues, mbuf pools and mbufs in RAII types. On top of that it adds header builders for
 UDP/IPv4, and a TCP endpoint that a regular kernel-socket client can connect to.
 
 - **RAII everywhere.** No `rte_pktmbuf_free`, no teardown order to remember. Packets free
