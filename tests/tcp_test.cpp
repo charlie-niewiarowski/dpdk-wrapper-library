@@ -192,9 +192,7 @@ protected:
             std::memcpy(opt, o, sizeof(o));
             th->data_off = 7 << 4;
         }
-        if (!payload.empty()) {
-            pkt.append(bytes(payload));
-        }
+        pkt.append(bytes(payload));
         dpdk::finalize_ipv4_header(pkt, ip);
         dpdk::finalize_tcp_header(pkt, ip, th);
         return pkt;

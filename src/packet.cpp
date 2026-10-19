@@ -4,6 +4,7 @@
 
 #include "packet.h"
 
+#include <cstdint>
 #include <cstring>
 
 namespace dpdk {
@@ -54,11 +55,20 @@ uint8_t *packet::append(uint16_t len) noexcept {
 }
 
 uint8_t *packet::append(Payload payload) noexcept {
+    // No mbuf holds more than 64 KiB, and narrowing first would append
+    // size % 65536 bytes and then copy all of them past the end.
+    if (payload.size() > UINT16_MAX) {
+        return nullptr;
+    }
     uint8_t *dst = append(static_cast<uint16_t>(payload.size()));
     if (dst == nullptr) {
         return nullptr;
     }
-    std::memcpy(dst, payload.data(), payload.size());
+    // An empty span's data() may be null, and memcpy from null is UB even
+    // for zero bytes.
+    if (!payload.empty()) {
+        std::memcpy(dst, payload.data(), payload.size());
+    }
     return dst;
 }
 

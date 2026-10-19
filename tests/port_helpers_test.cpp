@@ -7,6 +7,7 @@
 
 #include "dpdk_error.h"
 #include "ethernet_header.h"
+#include "packet.h"
 #include "test_env.h"
 
 namespace {
@@ -38,6 +39,23 @@ TEST(port, ipv4_address_is_unset_until_set) {
     EXPECT_FALSE(p.ipv4_address().has_value());
     p.set_ipv4_address(RTE_IPV4(10, 0, 0, 2));
     EXPECT_EQ(p.ipv4_address(), RTE_IPV4(10, 0, 0, 2));
+}
+
+TEST(packet, append_empty_payload_is_a_no_op) {
+    dpdk::packet pkt = dpdk_test::get().proto.get_pool()->get();
+    // A default-constructed span has a null data(): this used to reach
+    // memcpy(dst, nullptr, 0), which UBSan flags.
+    EXPECT_NE(pkt.append(dpdk::packet::Payload{}), nullptr);
+    EXPECT_EQ(pkt.length(), 0u);
+}
+
+TEST(packet, append_payload_over_64k_is_rejected) {
+    dpdk::packet pkt = dpdk_test::get().proto.get_pool()->get();
+    // 65536 + 4 narrows to 4: the old code appended 4 bytes and then
+    // copied all 65540 into them.
+    const std::vector<std::byte> big(65536 + 4);
+    EXPECT_EQ(pkt.append(dpdk::packet::Payload(big)), nullptr);
+    EXPECT_EQ(pkt.length(), 0u);
 }
 
 // Port 1's queues are consumed for good here, so this is one test
