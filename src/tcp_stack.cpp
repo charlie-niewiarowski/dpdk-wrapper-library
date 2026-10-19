@@ -15,6 +15,7 @@
 #include <rte_random.h>
 #include <rte_tcp.h>
 
+#include "arp.h"
 #include "dpdk_error.h"
 #include "ethernet_header.h"
 #include "ipv4_header.h"
@@ -281,6 +282,9 @@ struct tcp_receiver::impl {
 
     tcp_stack *stack;
     std::shared_ptr<tx_queue> txq;
+    // Fed by handle_arp's RFC 826 merge rule. Nothing reads it yet: every
+    // TCP segment goes to the MAC that connection's SYN came from. An
+    // active open (connect) would be its first reader.
     neighbor_table neighbors;
     flow_table flows;
     tcp_stats stats;
@@ -735,8 +739,6 @@ struct tcp_receiver::impl {
             ++stats.bad_checksum;
             return;
         }
-        neighbors.learn(src_ip, eth->src_addr);
-
         if (ip->next_proto_id != IPPROTO_TCP) {
             return;
         }
@@ -825,8 +827,6 @@ tcp_events tcp_receiver::poll(packet_burst &burst) noexcept {
 }
 
 const tcp_stats &tcp_receiver::stats() const noexcept { return impl_->stats; }
-
-const neighbor_table &tcp_receiver::neighbors() const noexcept { return impl_->neighbors; }
 
 tcp_receiver tcp_stack::receiver(std::shared_ptr<tx_queue> control_txq) {
     if (receiver_taken_) {

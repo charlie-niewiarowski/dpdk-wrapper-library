@@ -15,7 +15,6 @@
 #include <vector>
 #include <rte_ether.h>
 
-#include "arp.h"
 #include "packet.h"
 #include "packet_burst.h"
 #include "packet_pool.h"
@@ -255,10 +254,6 @@ public:
     tcp_events poll(packet_burst &burst) noexcept;
 
     const tcp_stats &stats() const noexcept;
-
-    // Learned from ARP and from every IPv4 frame addressed to us, for
-    // callers that also send their own unicast traffic (e.g. UDP).
-    const neighbor_table &neighbors() const noexcept;
 
 private:
     struct impl;

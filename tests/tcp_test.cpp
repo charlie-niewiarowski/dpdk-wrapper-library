@@ -23,6 +23,7 @@
 #include <rte_ip.h>
 #include <rte_tcp.h>
 
+#include "arp.h"
 #include "dpdk_error.h"
 #include "ethernet_header.h"
 #include "ipv4_header.h"
@@ -598,7 +599,7 @@ TEST_F(tcp, slot_reuse_rejects_stale_ids) {
     EXPECT_EQ(tx->send(dpdk::conn_id{7, 1}, bytes("x")), 0u) << "out-of-range slot";
 }
 
-TEST_F(tcp, answers_arp_and_learns_neighbors) {
+TEST_F(tcp, answers_arp) {
     make_stack();
     dpdk::packet req[1] = {dpdk::build_arp_request(*e.proto.get_pool(), peer_mac, peer_ip, local_ip)};
     ASSERT_EQ(e.tx[peer_q]->send_burst(req), 1);
@@ -607,7 +608,7 @@ TEST_F(tcp, answers_arp_and_learns_neighbors) {
     ASSERT_EQ(out.size(), 1u);
     const auto *eth = reinterpret_cast<const rte_ether_hdr *>(out[0].data());
     EXPECT_EQ(eth->ether_type, rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP));
-    ASSERT_NE(rx->neighbors().lookup(peer_ip), nullptr);
+    EXPECT_TRUE(rte_is_same_ether_addr(&eth->dst_addr, &peer_mac)) << "reply goes to the asker";
 }
 
 TEST_F(tcp, stack_setup_errors) {

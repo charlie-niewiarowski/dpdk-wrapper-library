@@ -12,7 +12,7 @@
 //   4. configure_kernel_interface("dpdktap0", <kernel-side IP>, 24)
 //   5. port.set_ipv4_address(<DPDK-side IP, same subnet>)
 // The kernel then routes that subnet via dpdktap0, ARPs for the DPDK
-// side's address (answered by tcp_receiver / handle_arp), and a plain
+// side's address (answered by tcp_receiver), and a plain
 // `nc <DPDK-side IP> <port>` reaches the port. Creating the tap device
 // and configuring it both need root (CAP_NET_ADMIN).
 //

@@ -12,6 +12,8 @@ add_executable(dpdk_lib_tests
         arp_test.cpp
         tcp_test.cpp)
 target_link_libraries(dpdk_lib_tests PRIVATE dpdk_lib GTest::gtest)
+# White-box: the ARP tests drive the library-internal headers in src/.
+target_include_directories(dpdk_lib_tests PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
 # One test entry for the whole binary rather than gtest_discover_tests:
 # every discovered case would be its own process, each paying for a full

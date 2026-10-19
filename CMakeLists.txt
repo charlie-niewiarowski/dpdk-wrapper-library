@@ -47,13 +47,16 @@ add_library(dpdk_lib STATIC
         src/tcp_header.cpp
         include/tcp_header.h
         src/arp.cpp
-        include/arp.h
+        src/arp.h
         src/tcp_connection.h
         src/tcp_stack.cpp
         include/tcp_stack.h
         src/tap_interface.cpp
         include/tap_interface.h)
-target_include_directories(dpdk_lib PUBLIC include)
+# include/ is the public API and propagates to anything linking dpdk_lib.
+# src/ holds headers the library uses internally (ARP, per-connection TCP
+# state); they stay off consumers' include path.
+target_include_directories(dpdk_lib PUBLIC include PRIVATE src)
 target_link_libraries(dpdk_lib PUBLIC PkgConfig::DPDK)
 enable_ipo_if_supported(dpdk_lib)
 

@@ -14,6 +14,9 @@ ctest --test-dir build            # unprivileged suite; the tap test reports "sk
 
 ## Core API (unchanged)
 
+Everything in `include/` is public. `src/` also holds internal headers (ARP and per-connection
+TCP state) that consumers of `dpdk_lib` can't include.
+
 | Type | Role |
 |---|---|
 | `runtime` | Brings the EAL up from a `runtime_params` aggregate (designated initializers) and tears it down. Owns every port. One per process. |
@@ -38,19 +41,12 @@ claimed by id. Claiming an out-of-range id throws `dpdk_error`. Claiming an alre
 returns null. `packet::is_contiguous()` reports whether a packet's bytes are all in its first
 segment.
 
-### ARP (`arp.h`)
+### ARP
 
-- `neighbor_table` is a fixed-capacity IPv4 → MAC map. It doesn't allocate after construction
-  and is single-threaded (it belongs to the RX thread).
-- `handle_arp(pkt, local_mac, local_ip, table, pool, reply)` follows RFC 826's merge rule:
-  known senders are refreshed, and a sender is added only when the request targets us. A
-  request for `local_ip` gets a unicast reply built into `reply`. The function never
-  transmits, so the caller picks the queue.
-- `build_arp_request(...)` builds a who-has request, or a gratuitous ARP when target ==
-  local.
-
-`tcp_receiver` runs ARP itself and also learns neighbors from every IPv4 frame addressed to us.
-The free functions are for UDP-only users, such as a multicast publisher.
+`tcp_receiver::poll()` answers ARP requests for the port's IPv4 address, so there's no ARP API to
+call. A multicast publisher doesn't need ARP at all: `ipv4_multicast_mac` gives the destination
+MAC directly. The implementation (`src/arp.h`) is internal to the library and isn't on consumers'
+include path.
 
 ### TCP termination (`tcp_stack.h`)
 
